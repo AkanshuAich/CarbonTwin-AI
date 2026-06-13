@@ -1,0 +1,34 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: carbontwin-ai
+  annotations:
+    run.googleapis.com/ingress: "all"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      containerConcurrency: 80
+      containers:
+      - image: DOCKER_IMAGE_URL_PLACEHOLDER
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        env:
+        - name: NODE_ENV
+          value: "production"
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 2
+          timeoutSeconds: 2
+          periodSeconds: 3
+          failureThreshold: 3

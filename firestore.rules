@@ -1,0 +1,60 @@
+// Firebase Security Rules — CarbonTwin AI
+// NOTE: These rules are designed for a guest-mode demo where the app uses
+// localStorage-based guest IDs passed as userId fields. In production, replace
+// isOwner() with: request.auth != null && request.auth.uid == userId
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──────────────────────────────────────
+    function isAuthenticated() {
+      // Production: return request.auth != null;
+      // Guest demo: Guest IDs are app-validated; open access for demonstration
+      return true;
+    }
+
+    function isValidString(field, maxLen) {
+      return field is string && field.size() <= maxLen;
+    }
+
+    function hasValidUserId() {
+      return request.resource.data.keys().hasAll(['userId'])
+        && isValidString(request.resource.data.userId, 128);
+    }
+
+    // ── Carbon Twin Profiles ──────────────────────────────────
+    // Each profile is keyed by userId — in production, enforce ownership:
+    // allow read, write: if request.auth != null && request.auth.uid == userId;
+    match /carbonTwinProfiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && isValidString(request.resource.data.userId, 128);
+      allow update: if isAuthenticated()
+        && request.resource.data.userId == resource.data.userId; // userId immutable
+      allow delete: if isAuthenticated();
+    }
+
+    // ── Scenarios ─────────────────────────────────────────────
+    match /scenarios/{scenarioId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasValidUserId()
+        && isValidString(request.resource.data.name, 100);
+      allow update: if false; // Scenarios are immutable
+      allow delete: if isAuthenticated();
+    }
+
+    // ── Weekly Reports ────────────────────────────────────────
+    match /weeklyReports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasValidUserId();
+      allow update: if false; // Reports are immutable
+      allow delete: if isAuthenticated();
+    }
+
+    // ── Deny all other access ─────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
