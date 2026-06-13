@@ -4,8 +4,8 @@
 
 CarbonTwin AI is a production-ready, full-stack web application that creates a **Digital Carbon Twin** for every user — a personalized AI model of your lifestyle that enables powerful future impact simulations powered by Google Gemini.
 
-[![CI](https://github.com/your-org/carbontwin-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/carbontwin-ai/actions)
-[![CodeQL](https://github.com/your-org/carbontwin-ai/actions/workflows/codeql.yml/badge.svg)](https://github.com/your-org/carbontwin-ai/actions)
+[![CI](https://github.com/AkanshuAich/CarbonTwin-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/AkanshuAich/CarbonTwin-AI/actions)
+[![CodeQL](https://github.com/AkanshuAich/CarbonTwin-AI/actions/workflows/codeql.yml/badge.svg)](https://github.com/AkanshuAich/CarbonTwin-AI/actions)
 
 ---
 
