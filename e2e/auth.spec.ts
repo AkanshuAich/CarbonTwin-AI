@@ -1,11 +1,11 @@
 import { test, expect, Page } from "@playwright/test";
 
 test.describe("Authentication Flow", () => {
-  test("should show login page when unauthenticated", async ({ page }) => {
+  test("should allow guest access to dashboard without login", async ({ page }) => {
     await page.goto("/dashboard");
-    // Should redirect to login
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // Should NOT redirect to login due to Guest Mode
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.getByText(/Create Your Carbon Twin/i)).toBeVisible();
   });
 
   test("login page should have sign-in button", async ({ page }) => {
@@ -36,12 +36,12 @@ test.describe("Home Page", () => {
   test("should display hero content", async ({ page }) => {
     await page.goto("/login");
     await expect(page.getByText(/See Your/)).toBeVisible();
-    await expect(page.getByText(/Digital Carbon Twin/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Digital Carbon Twin/i })).toBeVisible();
   });
 
   test("should show feature cards", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByText(/Future Impact/i)).toBeVisible();
-    await expect(page.getByText(/AI Action Prioritizer/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Future Impact/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /AI Action Prioritizer/i })).toBeVisible();
   });
 });

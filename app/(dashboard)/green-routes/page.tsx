@@ -54,10 +54,11 @@ export default function GreenRoutesPage() {
       setOptions(loaderOptions as Parameters<typeof setOptions>[0]);
 
       try {
-        const [mapsLib, routesLib, placesLib] = await Promise.all([
+        const [mapsLib, routesLib, placesLib, geocodingLib] = await Promise.all([
           importLibrary("maps") as Promise<google.maps.MapsLibrary>,
           importLibrary("routes") as Promise<google.maps.RoutesLibrary>,
-          importLibrary("places") as Promise<google.maps.PlacesLibrary>
+          importLibrary("places") as Promise<google.maps.PlacesLibrary>,
+          importLibrary("geocoding") as Promise<google.maps.GeocodingLibrary>
         ]);
         
         if (!mapRef.current || !originInputRef.current || !destInputRef.current) return;

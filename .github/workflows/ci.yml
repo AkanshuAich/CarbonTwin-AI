@@ -83,7 +83,7 @@ jobs:
         run: npm ci --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps
 
       - name: Run E2E tests
         run: npx playwright test
