@@ -12,7 +12,8 @@ describe("100% Coverage Catch-up", () => {
   describe("calculator.ts default fallbacks", () => {
     it("should use default transport factor for unknown mode", () => {
       const result = calculateTransportEmissions({
-        primaryMode: "teleportation" as any,
+        // @ts-expect-error Intentionally testing fallback
+        primaryMode: "teleportation",
         weeklyKm: 100,
         flightsPerYear: 0,
         shortHaulFlights: 0,
@@ -24,7 +25,8 @@ describe("100% Coverage Catch-up", () => {
 
     it("should use default diet factor for unknown diet", () => {
       const result = calculateDietEmissions({
-        type: "photosynthesis" as any,
+        // @ts-expect-error Intentionally testing fallback
+        type: "photosynthesis",
         meatMealsPerWeek: 0,
         dairyServingsPerDay: 0,
         localFoodPercentage: 0,
@@ -35,7 +37,8 @@ describe("100% Coverage Catch-up", () => {
     it("should use default energy factor for unknown source", () => {
       const result = calculateEnergyEmissions({
         monthlyKwh: 100,
-        energySource: "fusion" as any,
+        // @ts-expect-error Intentionally testing fallback
+        energySource: "fusion",
         hasAirConditioning: false,
         hasElectricHeating: false,
         householdSize: 1,

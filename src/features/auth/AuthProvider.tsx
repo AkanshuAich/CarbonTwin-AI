@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(guestIdKey, guestId);
     }
     
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser({
       uid: guestId,
       displayName: "Guest Explorer",
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + guestId,
     } as User);
     
+     
     setLoading(false);
   }, []);
 

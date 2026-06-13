@@ -77,9 +77,10 @@ RULES:
       generationConfig: { responseMimeType: "application/json" }
     });
     text = result.response.text().trim();
-  } catch (error: any) {
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : "Unknown error";
     // If we hit a 503 on 2.5-flash, fallback to 2.5-flash-lite which is less likely to hit quotas
-    console.warn("Primary model failed, falling back to gemini-2.5-flash-lite", error.message);
+    console.warn("Primary model failed, falling back to gemini-2.5-flash-lite", errMessage);
     const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
     const result = await fallbackModel.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],

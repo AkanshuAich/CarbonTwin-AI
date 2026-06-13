@@ -83,16 +83,17 @@ export default function AiCoachPage() {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
+        const currentContent = accumulated + chunk;
+        accumulated = currentContent;
 
         // Update the last message with accumulated content
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantId ? { ...m, content: accumulated } : m
+            m.id === assistantId ? { ...m, content: currentContent } : m
           )
         );
       }
-    } catch (err) {
+    } catch {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId

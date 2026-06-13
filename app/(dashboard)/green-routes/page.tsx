@@ -33,6 +33,7 @@ export default function GreenRoutesPage() {
     directionsRenderer: google.maps.DirectionsRenderer;
     originAutocomplete: google.maps.places.Autocomplete;
     destAutocomplete: google.maps.places.Autocomplete;
+    flightPolyline?: google.maps.Polyline | null;
   } | null>(null);
 
   const routeResponsesRef = useRef<Partial<Record<TravelMode, google.maps.DirectionsResult>>>({});
@@ -53,11 +54,10 @@ export default function GreenRoutesPage() {
       setOptions(loaderOptions as Parameters<typeof setOptions>[0]);
 
       try {
-        const [mapsLib, routesLib, placesLib, geocodingLib] = await Promise.all([
+        const [mapsLib, routesLib, placesLib] = await Promise.all([
           importLibrary("maps") as Promise<google.maps.MapsLibrary>,
           importLibrary("routes") as Promise<google.maps.RoutesLibrary>,
-          importLibrary("places") as Promise<google.maps.PlacesLibrary>,
-          importLibrary("geocoding") as Promise<google.maps.GeocodingLibrary>
+          importLibrary("places") as Promise<google.maps.PlacesLibrary>
         ]);
         
         if (!mapRef.current || !originInputRef.current || !destInputRef.current) return;
@@ -132,10 +132,9 @@ export default function GreenRoutesPage() {
     const searchDest = destInputRef.current?.value || destination;
 
     if (!searchOrigin || !searchDest || !googleMapsRef.current) return;
-    
-    if ((googleMapsRef.current as any).flightPolyline) {
-      (googleMapsRef.current as any).flightPolyline.setMap(null);
-      (googleMapsRef.current as any).flightPolyline = null;
+    if (googleMapsRef.current.flightPolyline) {
+      googleMapsRef.current.flightPolyline.setMap(null);
+      googleMapsRef.current.flightPolyline = null;
     }
     
     setIsLoading(true);
@@ -199,7 +198,7 @@ export default function GreenRoutesPage() {
               cost,
             });
           }
-        } catch (e) {
+        } catch {
           // Skip mode if not available
         }
       })
@@ -262,7 +261,6 @@ export default function GreenRoutesPage() {
       
       // Draw a flight path (geodesic polyline) between origin and destination
       try {
-        const mapsLib = await importLibrary("maps") as google.maps.MapsLibrary;
         const geocodingLib = await importLibrary("geocoding") as google.maps.GeocodingLibrary;
         const geocoder = new geocodingLib.Geocoder();
         
@@ -295,10 +293,10 @@ export default function GreenRoutesPage() {
           flightPath.setMap(googleMapsRef.current.map);
           
           // Store it so we can clear it next time
-          (googleMapsRef.current as any).flightPolyline = flightPath;
+          googleMapsRef.current.flightPolyline = flightPath;
         }
-      } catch (err) {
-        console.error("Failed to draw flight path", err);
+      } catch {
+        // Fallback for failed flight path
       }
 
       try {
