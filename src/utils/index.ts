@@ -24,7 +24,7 @@ export function formatPercent(value: number, showSign = false): string {
 }
 
 /**
- * Clamp a value between min and max
+ * Clamp a number value between a minimum and maximum bound
  */
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -45,7 +45,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 }
 
 /**
- * Get carbon category display color
+ * Get the Tailwind-compatible hex color for a carbon footprint category
  */
 export function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
@@ -102,7 +102,7 @@ export function getRankConfig(rank: string): {
 }
 
 /**
- * Sanitize user text input
+ * Strip dangerous HTML characters from user-provided text before sending to the AI
  */
 export function sanitizeInput(input: string): string {
   return input

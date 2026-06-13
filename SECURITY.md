@@ -35,7 +35,7 @@ We will respond within 48 hours and work with you to fix the issue.
 ### API Security
 - **Zod validation** on all API route inputs
 - **Input sanitization** — HTML characters stripped from user text
-- **Rate limiting** via Cloud Run's built-in request limits
+- **Rate limiting** via custom application-level IP tracking (e.g. 10 requests/min for AI routes) as well as Cloud Run's built-in request limits
 - Server-side only secrets (Gemini API key, Firebase Admin credentials)
 
 ### Transport Security

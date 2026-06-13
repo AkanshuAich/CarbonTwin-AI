@@ -16,11 +16,12 @@ import { MonthlyTrendsChart } from "@/features/dashboard/MonthlyTrendsChart";
 import { CategoryCards } from "@/features/dashboard/CategoryCards";
 
 export default function DashboardPage() {
+  // Defined before JSX for readability — extracted from inline onClick handler
   const { user } = useAuthContext();
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading, error } = useQuery({
+  const { data: profile, isLoading } = useQuery({
     queryKey: ["carbonTwinProfile", user?.uid],
     queryFn: () => getCarbonTwinProfile(user!.uid),
     enabled: !!user?.uid,
@@ -72,6 +73,13 @@ export default function DashboardPage() {
 
 
   if (!dashboardData) return null;
+
+  const handleResetTwin = async () => {
+    if (!confirm("Are you sure you want to reset your Carbon Twin? This cannot be undone.")) return;
+    await deleteCarbonTwinProfile(user!.uid);
+    await queryClient.invalidateQueries({ queryKey: ["carbonTwinProfile", user!.uid] });
+    router.push("/onboarding");
+  };
 
   const { currentFootprint, monthlyHistory, globalAverage, rank } = dashboardData;
   const rankConfig = getRankConfig(rank);
@@ -200,14 +208,9 @@ export default function DashboardPage() {
       {/* Reset Twin Button */}
       <div className="flex justify-center mt-12 pb-8">
         <button
-          onClick={async () => {
-            if (confirm("Are you sure you want to reset your Carbon Twin? This cannot be undone.")) {
-              await deleteCarbonTwinProfile(user!.uid);
-              await queryClient.invalidateQueries({ queryKey: ["carbonTwinProfile", user!.uid] });
-              router.push("/onboarding");
-            }
-          }}
+          onClick={handleResetTwin}
           className="text-sm text-destructive hover:underline"
+          aria-label="Reset Carbon Twin profile"
         >
           Reset my Carbon Twin
         </button>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { FileText, RefreshCw, Sparkles, TrendingUp, AlertCircle } from "lucide-react";
@@ -9,6 +8,15 @@ import { getCarbonTwinProfile, getLatestWeeklyReport } from "@/services/firebase
 import { calculateCarbonFootprint } from "@/lib/carbon/calculator";
 import type { WeeklyReport } from "@/types";
 import { formatCO2, cn } from "@/utils";
+import { logger } from "@/utils/logger";
+
+// Module-level constant — does not change between renders
+const CATEGORY_LABELS: Record<string, string> = {
+  transport: "Transport 🚗",
+  diet: "Diet & Food 🥗",
+  energy: "Home Energy ⚡",
+  shopping: "Shopping 🛍️",
+};
 
 export default function ReportPage() {
   const { user } = useAuthContext();
@@ -42,16 +50,12 @@ export default function ReportPage() {
       const data = await res.json();
       return data.report;
     },
+    onError: (err: unknown) => {
+      logger.error({ message: "Failed to generate weekly report", error: String(err) });
+    },
   });
 
   const displayReport = report ?? existingReport;
-
-  const CATEGORY_LABELS: Record<string, string> = {
-    transport: "Transport 🚗",
-    diet: "Diet & Food 🥗",
-    energy: "Home Energy ⚡",
-    shopping: "Shopping 🛍️",
-  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">

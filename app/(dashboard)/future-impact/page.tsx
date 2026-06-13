@@ -5,14 +5,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import {
   TrendingDown,
-  Plus,
   Trash2,
   Save,
   Sparkles,
   ChevronRight,
   RefreshCw,
+  Bot,
+  Loader2,
 } from "lucide-react";
-import type { CarbonTwinProfile, Scenario, ScenarioChange } from "@/types";
+import type { ScenarioChange } from "@/types";
 import { buildScenario } from "@/lib/simulation/engine";
 import { calculateCarbonFootprint } from "@/lib/carbon/calculator";
 import { SCENARIO_PRESETS, SCENARIO_TEMPLATES } from "@/lib/simulation/presets";
@@ -20,6 +21,7 @@ import { getCarbonTwinProfile } from "@/services/firebase/firestore";
 import { saveScenario, getUserScenarios } from "@/services/firebase/firestore";
 import { useAuthContext } from "@/features/auth/AuthProvider";
 import { formatCO2, cn } from "@/utils";
+import { logger } from "@/utils/logger";
 import { ImpactComparisonChart } from "@/features/future-impact/ImpactComparisonChart";
 import { EquivalenceDisplay } from "@/features/future-impact/EquivalenceDisplay";
 import { CategoryChangeBreakdown } from "@/features/future-impact/CategoryChangeBreakdown";
@@ -38,6 +40,8 @@ export default function FutureImpactPage() {
   const [activeCategory, setActiveCategory] = useState<string>("transport");
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
+  const [aiNarrative, setAiNarrative] = useState<string | null>(null);
+  const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
 
   // Load Carbon Twin profile
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -78,6 +82,8 @@ export default function FutureImpactPage() {
       const filtered = prev.filter((c) => c.type !== change.type);
       return [...filtered, change];
     });
+    // Reset narrative when the scenario changes
+    setAiNarrative(null);
   }, []);
 
   const isSelected = useCallback(
@@ -109,14 +115,38 @@ export default function FutureImpactPage() {
       refetchScenarios();
       setTimeout(() => setSavedMessage(""), 3000);
     } catch (err) {
-      console.error("Save error:", err);
+      logger.error({ message: "Failed to save scenario", error: String(err) });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const filteredPresets = SCENARIO_PRESETS.filter((p) => {
-    if (activeCategory === "all") return true;
+  const handleGenerateNarrative = async () => {
+    if (!currentScenario) return;
+    setIsGeneratingNarrative(true);
+    try {
+      const res = await fetch("/api/ai/scenario-narrative", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenarioName: currentScenario.name,
+          savedKgCO2ePerYear: currentScenario.savedKgCO2ePerYear,
+          percentageReduction: currentScenario.percentageReduction,
+          changeLabels: currentScenario.changes.map((c) => c.label),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to generate narrative");
+      const data = await res.json();
+      setAiNarrative(data.narrative ?? null);
+    } catch {
+      setAiNarrative("Unable to generate AI insight at this time. Please try again.");
+    } finally {
+      setIsGeneratingNarrative(false);
+    }
+  };
+
+  const filteredPresets = useMemo(() => {
+    if (activeCategory === "all") return SCENARIO_PRESETS;
     const categoryPrefixMap: Record<string, string[]> = {
       transport: ["transport", "reduce_flights", "work_from_home"],
       diet: ["diet"],
@@ -124,8 +154,10 @@ export default function FutureImpactPage() {
       shopping: ["reduce_shopping", "increase_recycling"],
     };
     const prefixes = categoryPrefixMap[activeCategory] ?? [];
-    return prefixes.some((prefix) => p.type.startsWith(prefix));
-  });
+    return SCENARIO_PRESETS.filter((p) =>
+      prefixes.some((prefix) => p.type.startsWith(prefix))
+    );
+  }, [activeCategory]);
 
   if (profileLoading) {
     return (
@@ -444,6 +476,76 @@ export default function FutureImpactPage() {
                     equivalencies={currentScenario.equivalencies}
                     savedKgCO2e={currentScenario.savedKgCO2ePerYear}
                   />
+                </div>
+                {/* AI Insight — Gemini-generated narrative */}
+                <div className="glass rounded-2xl p-6 border border-primary/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-semibold flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-primary" aria-hidden="true" />
+                      AI Insight
+                    </h2>
+                    {!aiNarrative && (
+                      <button
+                        onClick={handleGenerateNarrative}
+                        disabled={isGeneratingNarrative}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium",
+                          "gradient-brand text-white",
+                          "disabled:opacity-50 disabled:cursor-not-allowed",
+                          "hover:shadow-md hover:shadow-primary/20 transition-all"
+                        )}
+                        aria-label="Generate Gemini AI insight for this scenario"
+                      >
+                        {isGeneratingNarrative ? (
+                          <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Sparkles className="w-3 h-3" aria-hidden="true" />
+                        )}
+                        {isGeneratingNarrative ? "Generating..." : "Generate AI Insight"}
+                      </button>
+                    )}
+                    {aiNarrative && (
+                      <button
+                        onClick={() => setAiNarrative(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Clear AI insight"
+                      >
+                        Regenerate
+                      </button>
+                    )}
+                  </div>
+                  <AnimatePresence mode="wait">
+                    {!aiNarrative && !isGeneratingNarrative ? (
+                      <motion.p
+                        key="placeholder"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-sm text-muted-foreground italic"
+                      >
+                        Click &ldquo;Generate AI Insight&rdquo; to get a Gemini-powered narrative about the real-world impact of this scenario.
+                      </motion.p>
+                    ) : isGeneratingNarrative ? (
+                      <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-center gap-2 text-sm text-muted-foreground"
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" aria-hidden="true" />
+                        Gemini is crafting your personalized insight...
+                      </motion.div>
+                    ) : (
+                      <motion.p
+                        key="narrative"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-sm text-foreground leading-relaxed"
+                        aria-live="polite"
+                      >
+                        {aiNarrative}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             )}

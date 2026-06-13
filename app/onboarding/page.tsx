@@ -13,6 +13,7 @@ import { EnergyStep } from "@/features/onboarding/EnergyStep";
 import { ShoppingStep } from "@/features/onboarding/ShoppingStep";
 import { Leaf, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { cn } from "@/utils";
+import { logger } from "@/utils/logger";
 
 const STEPS = [
   { id: 1, label: "Transport", emoji: "🚗" },
@@ -98,7 +99,7 @@ export default function OnboardingPage() {
       await queryClient.invalidateQueries({ queryKey: ["carbonTwinProfile", user.uid] });
       router.push("/dashboard");
     } catch (err) {
-      console.error("Save error:", err);
+      logger.error({ message: "Failed to save Carbon Twin profile during onboarding", error: String(err) });
       setSaveError("Failed to save your profile. Please try again.");
     } finally {
       setIsSaving(false);

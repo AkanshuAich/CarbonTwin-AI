@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Car, Bus, Bike, Footprints, Search, Loader2 } from "lucide-react";
 import { formatCO2, cn } from "@/utils";
+import { logger } from "@/utils/logger";
 import type { RouteOption, TravelMode } from "@/types";
 import { ROUTE_EMISSION_FACTORS } from "@/lib/carbon/constants";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
@@ -42,7 +43,7 @@ export default function GreenRoutesPage() {
     const initMap = async () => {
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
       if (!apiKey) {
-        console.error("Google Maps API key is missing");
+        logger.error({ message: "Google Maps API key is missing — set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" });
         return;
       }
 
@@ -116,12 +117,12 @@ export default function GreenRoutesPage() {
                 }
               }
             } catch (geocodeErr) {
-              console.error("Failed to geocode current location", geocodeErr);
+              logger.warn({ message: "Failed to geocode current location", error: String(geocodeErr) });
             }
           });
         }
       } catch (err) {
-        console.error("Failed to load Google Maps", err);
+        logger.error({ message: "Failed to load Google Maps libraries", error: String(err) });
       }
     };
 
@@ -199,8 +200,9 @@ export default function GreenRoutesPage() {
               cost,
             });
           }
-        } catch {
-          // Skip mode if not available
+        } catch (err) {
+          // Skip this travel mode if directions API returns no result
+          logger.warn({ message: `No directions available for mode, skipping`, error: String(err) });
         }
       })
     );
@@ -296,8 +298,9 @@ export default function GreenRoutesPage() {
           // Store it so we can clear it next time
           googleMapsRef.current.flightPolyline = flightPath;
         }
-      } catch {
-        // Fallback for failed flight path
+      } catch (err) {
+        // Fallback: couldn't draw geodesic flight path
+        logger.warn({ message: "Failed to draw flight path polyline", error: String(err) });
       }
 
       try {
@@ -315,6 +318,7 @@ export default function GreenRoutesPage() {
           );
         }
       } catch (err) {
+        logger.error({ message: "AI route advisor fetch failed", error: String(err) });
         setAiRecommendation(
           "❌ We couldn't find any viable routes between these two locations."
         );
