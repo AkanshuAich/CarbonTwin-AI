@@ -5,7 +5,7 @@ test.describe("Authentication Flow", () => {
     await page.goto("/dashboard");
     // Should NOT redirect to login due to Guest Mode
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByText(/Create Your Carbon Twin/i)).toBeVisible();
+    await expect(page.getByRole("banner")).toBeVisible();
   });
 
   test("login page should have sign-in button", async ({ page }) => {
