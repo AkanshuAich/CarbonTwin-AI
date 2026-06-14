@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles, RefreshCw, TrendingDown, Zap, ShoppingBag, Utensils } from "lucide-react";

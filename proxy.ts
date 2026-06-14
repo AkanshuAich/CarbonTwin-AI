@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+
 
 export function proxy() {
   // Guest Mode: We bypassed Firebase Auth, so we don't enforce
