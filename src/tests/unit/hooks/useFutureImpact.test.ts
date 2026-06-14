@@ -61,7 +61,7 @@ describe("useFutureImpact", () => {
 
     const { result } = renderHook(() => useFutureImpact());
 
-    const mockChange = { type: "test-type", label: "Test Label", description: "", icon: "", impact: {} };
+    const mockChange = { type: "test-type", label: "Test Label", description: "", icon: "", impact: {}, parameters: {} } as any;
 
     act(() => {
       result.current.toggleChange(mockChange);
