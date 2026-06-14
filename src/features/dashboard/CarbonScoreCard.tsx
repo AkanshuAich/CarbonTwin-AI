@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { cn } from "@/utils";
 
 interface CarbonScoreCardProps {
   score: number;
@@ -14,7 +13,7 @@ interface CarbonScoreCardProps {
   };
 }
 
-export function CarbonScoreCard({ score, rank, rankConfig }: CarbonScoreCardProps) {
+export function CarbonScoreCard({ score, rankConfig }: CarbonScoreCardProps) {
   const circumference = 2 * Math.PI * 45;
   const strokeDashoffset = circumference - (score / 100) * circumference;
 

@@ -30,6 +30,7 @@ import {
   GLOBAL_AVERAGE_KG_CO2E,
   UK_AVERAGE_KG_CO2E,
   TARGET_KG_CO2E,
+  MAX_BAD_KG_CO2E,
 } from "./constants";
 
 /**
@@ -189,7 +190,7 @@ export function getCarbonRank(
  * Get a 0-100 carbon score (higher = better)
  */
 export function getCarbonScore(annualKgCO2e: number): number {
-  const maxBad = 30000;
+  const maxBad = MAX_BAD_KG_CO2E;
   const target = TARGET_KG_CO2E;
   const score = Math.max(0, Math.min(100, ((maxBad - annualKgCO2e) / (maxBad - target)) * 100));
   return Math.round(score);

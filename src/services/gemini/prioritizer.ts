@@ -1,4 +1,5 @@
-import { getFlashModel, genAI } from "./client";
+import { getFlashModel } from "./client";
+import { withGeminiFallback } from "./withFallback";
 import type { CarbonTwinProfile, CarbonFootprint, AIRecommendation } from "@/types";
 import { z } from "zod";
 
@@ -20,14 +21,20 @@ const RecommendationsResponseSchema = z.object({
 });
 
 /**
+ * Strips any markdown fencing that models may still add despite the
+ * `responseMimeType: "application/json"` generation config.
+ */
+function cleanJsonResponse(text: string): string {
+  return text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
+}
+
+/**
  * Generate personalized AI recommendations using the Carbon Twin profile
  */
 export async function generateAIRecommendations(
   profile: CarbonTwinProfile,
   footprint: CarbonFootprint
 ): Promise<AIRecommendation[]> {
-  const model = getFlashModel();
-
   const prompt = `You are a carbon footprint expert. Analyze this user's Carbon Twin profile and generate exactly 6 personalized, actionable recommendations to reduce their carbon footprint.
 
 USER PROFILE:
@@ -70,28 +77,28 @@ RULES:
 - Do NOT give generic advice. Reference their specific numbers.
 - Return ONLY valid JSON, no markdown.`;
 
-  let text = "";
-  try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json" }
-    });
-    text = result.response.text().trim();
-  } catch (error) {
-    const errMessage = error instanceof Error ? error.message : "Unknown error";
-    // If we hit a 503 on 2.5-flash, fallback to 2.5-flash-lite which is less likely to hit quotas
-    console.warn("Primary model failed, falling back to gemini-2.5-flash-lite", errMessage);
-    const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-    const result = await fallbackModel.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json" }
-    });
-    text = result.response.text().trim();
-  }
+  const generateConfig = { responseMimeType: "application/json" } as const;
 
-  // Sometimes models still wrap in markdown even with responseMimeType
-  const json = text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
+  const text = await withGeminiFallback(
+    async () => {
+      const result = await getFlashModel().generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: generateConfig,
+      });
+      return result.response.text().trim();
+    },
+    async (fallbackModel) => {
+      const result = await fallbackModel.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: generateConfig,
+      });
+      return result.response.text().trim();
+    },
+    "generateAIRecommendations"
+  );
 
-  const parsed = RecommendationsResponseSchema.parse(JSON.parse(json));
+  const parsed = RecommendationsResponseSchema.parse(
+    JSON.parse(cleanJsonResponse(text))
+  );
   return parsed.recommendations;
 }

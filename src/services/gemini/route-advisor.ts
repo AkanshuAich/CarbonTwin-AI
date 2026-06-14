@@ -1,8 +1,17 @@
-import { getFlashModel, genAI } from "./client";
+import { getFlashModel } from "./client";
+import { withGeminiFallback } from "./withFallback";
 
-export async function generateRouteAdvice(origin: string, destination: string): Promise<string> {
-  const model = getFlashModel();
+const FALLBACK_ADVICE_TEMPLATE = (origin: string, destination: string) =>
+  `For long-distance or cross-ocean travel from ${origin} to ${destination}, flights are usually necessary. To keep your footprint low, choose direct flights and use public transit or electric trains once you arrive at your destination!`;
 
+/**
+ * Generate eco-friendly travel advice for a route that the Directions API
+ * could not map (e.g. cross-ocean journeys).
+ */
+export async function generateRouteAdvice(
+  origin: string,
+  destination: string
+): Promise<string> {
   const prompt = `You are a CarbonTwin AI Route Advisor. The user wants to travel from "${origin}" to "${destination}".
 Google Maps Directions API could not find a direct ground route for this journey (likely because it crosses oceans, involves unmapped borders, or is an extreme distance).
 
@@ -15,23 +24,24 @@ RULES:
 4. Use an encouraging, eco-conscious tone.
 5. Do not use markdown headers, just return a simple, clean string of text.`;
 
-  try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-    });
-    return result.response.text().trim();
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.warn("Primary model failed for route advice, falling back to gemini-2.5-flash-lite", errorMessage);
-    try {
-      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-      const result = await fallbackModel.generateContent({
+  return withGeminiFallback(
+    async () => {
+      const result = await getFlashModel().generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
       return result.response.text().trim();
-    } catch (fallbackError: unknown) {
-      console.error("Fallback model also failed", fallbackError);
-      return `For long-distance or cross-ocean travel from ${origin} to ${destination}, flights are usually necessary. To keep your footprint low, choose direct flights and use public transit or electric trains once you arrive at your destination!`;
-    }
-  }
+    },
+    async (fallbackModel) => {
+      try {
+        const result = await fallbackModel.generateContent({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+        });
+        return result.response.text().trim();
+      } catch {
+        // Both models failed — return a safe static fallback
+        return FALLBACK_ADVICE_TEMPLATE(origin, destination);
+      }
+    },
+    "generateRouteAdvice"
+  );
 }

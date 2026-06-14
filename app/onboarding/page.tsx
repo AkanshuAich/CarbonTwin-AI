@@ -22,12 +22,10 @@ const STEPS = [
   { id: 4, label: "Shopping", emoji: "🛍️" },
 ];
 
-type PartialProfile = {
-  transport: CarbonTwinProfile["transport"];
-  diet: CarbonTwinProfile["diet"];
-  energy: CarbonTwinProfile["energy"];
-  shopping: CarbonTwinProfile["shopping"];
-};
+type PartialProfile = Pick<
+  CarbonTwinProfile,
+  "transport" | "diet" | "energy" | "shopping"
+>;
 
 const DEFAULT_PROFILE: PartialProfile = {
   transport: {

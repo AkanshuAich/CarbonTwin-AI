@@ -15,8 +15,8 @@ const RequestSchema = z.object({
       timestamp: z.coerce.date(),
     })
   ).max(20),
-  profile: z.record(z.string(), z.unknown()),
-  footprint: z.record(z.string(), z.unknown()),
+  profile: z.any(), // Will be typed by CarbonTwinProfile in the function
+  footprint: z.any(), // Will be typed by CarbonFootprint in the function
 });
 
 export async function POST(req: NextRequest) {
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     const stream = await generateCoachResponse(
       sanitizedMessage,
       parsed.history as Parameters<typeof generateCoachResponse>[1],
-      parsed.profile as unknown as Parameters<typeof generateCoachResponse>[2],
-      parsed.footprint as unknown as Parameters<typeof generateCoachResponse>[3]
+      parsed.profile,
+      parsed.footprint
     );
 
     const encoder = new TextEncoder();

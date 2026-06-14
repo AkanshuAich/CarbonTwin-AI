@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 test.describe("Authentication Flow", () => {
   test("should allow guest access to dashboard without login", async ({ page }) => {

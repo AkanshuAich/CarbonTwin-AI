@@ -1,4 +1,5 @@
-import { getProModel, genAI } from "./client";
+import { getProModel } from "./client";
+import { withGeminiFallback } from "./withFallback";
 
 export interface ScenarioNarrativeInput {
   scenarioName: string;
@@ -11,8 +12,7 @@ export interface ScenarioNarrativeInput {
  * Generate a concise, motivational 2-3 sentence AI narrative describing
  * the real-world impact of a user's simulated lifestyle scenario.
  * Uses the Pro model (lower temperature, higher focus) like the report service.
- * Falls back to gemini-2.5-flash-lite on quota errors, matching the pattern
- * used by coach.ts and prioritizer.ts.
+ * Falls back to gemini-2.5-flash-lite on quota errors via withGeminiFallback.
  */
 export async function generateScenarioNarrative(
   input: ScenarioNarrativeInput
@@ -31,16 +31,15 @@ Write a short, warm, and motivating narrative of exactly 2-3 sentences that:
 
 Keep the tone friendly and empowering, not preachy. Do not use bullet points or headers. Output only the narrative text.`;
 
-  try {
-    const model = getProModel();
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
-  } catch (error) {
-    const errMessage = error instanceof Error ? error.message : "Unknown error";
-    // Fall back to flash-lite on quota / overload errors — same pattern as prioritizer.ts
-    console.warn("Primary scenario narrative model failed, falling back to gemini-2.5-flash-lite", errMessage);
-    const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-    const result = await fallbackModel.generateContent(prompt);
-    return result.response.text().trim();
-  }
+  return withGeminiFallback(
+    async () => {
+      const result = await getProModel().generateContent(prompt);
+      return result.response.text().trim();
+    },
+    async (fallbackModel) => {
+      const result = await fallbackModel.generateContent(prompt);
+      return result.response.text().trim();
+    },
+    "generateScenarioNarrative"
+  );
 }

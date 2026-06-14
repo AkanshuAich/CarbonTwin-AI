@@ -1,4 +1,5 @@
 import { getFlashModel } from "./client";
+import { withGeminiFallback } from "./withFallback";
 import type { CarbonTwinProfile, CarbonFootprint, ChatMessage } from "@/types";
 
 /**
@@ -49,45 +50,37 @@ export async function generateCoachResponse(
   profile: CarbonTwinProfile,
   footprint: CarbonFootprint
 ): Promise<AsyncIterable<string>> {
-  const model = getFlashModel();
-
   const systemPrompt = buildSystemPrompt(profile, footprint);
 
-  // Use only the actual conversation history (not the system prompt injection trick)
   const historyConfig = history.slice(-10).map((msg) => ({
-    role: msg.role === "user" ? "user" as const : "model" as const,
+    role: msg.role === "user" ? ("user" as const) : ("model" as const),
     parts: [{ text: msg.content }],
   }));
 
-  try {
+  /**
+   * Returns a streaming async generator for a given model's chat session.
+   * Extracted to avoid duplicating the generator logic between primary
+   * and fallback code paths.
+   */
+  const makeStreamGenerator = (
+    model: ReturnType<typeof getFlashModel>
+  ) => async () => {
     const chat = model.startChat({
       history: historyConfig,
       systemInstruction: { role: "system", parts: [{ text: systemPrompt }] },
     });
     const result = await chat.sendMessageStream(message);
-
     return (async function* () {
       for await (const chunk of result.stream) {
         const text = chunk.text();
         if (text) yield text;
       }
     })();
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.warn("Primary coach model failed, falling back to gemini-2.5-flash-lite", errorMessage);
-    const { genAI } = await import("./client");
-    const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-    const fallbackChat = fallbackModel.startChat({
-      history: historyConfig,
-      systemInstruction: { role: "system", parts: [{ text: systemPrompt }] },
-    });
-    const result = await fallbackChat.sendMessageStream(message);
+  };
 
-    return (async function* () {
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (text) yield text;
-      }
-    })();
-  }
+  return withGeminiFallback(
+    makeStreamGenerator(getFlashModel()),
+    (fallbackModel) => makeStreamGenerator(fallbackModel)(),
+    "generateCoachResponse"
+  );
 }

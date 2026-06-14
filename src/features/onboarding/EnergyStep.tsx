@@ -1,6 +1,7 @@
 "use client";
 
 import type { CarbonTwinProfile } from "@/types";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 
 interface EnergyStepProps {
   data: CarbonTwinProfile["energy"];
@@ -96,53 +97,21 @@ export function EnergyStep({ data, onChange }: EnergyStepProps) {
 
       {/* Toggles */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between p-3 rounded-xl border border-border">
-          <div>
-            <p className="font-medium text-sm">Air Conditioning</p>
-            <p className="text-xs text-muted-foreground">Do you use AC regularly?</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={data.hasAirConditioning}
-            onClick={() => update("hasAirConditioning", !data.hasAirConditioning)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              data.hasAirConditioning ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                data.hasAirConditioning ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-            <span className="sr-only">
-              {data.hasAirConditioning ? "Air conditioning enabled" : "Air conditioning disabled"}
-            </span>
-          </button>
-        </div>
+        <ToggleSwitch
+          id="ac-toggle"
+          label="Air Conditioning"
+          description="Do you use AC regularly?"
+          checked={data.hasAirConditioning}
+          onChange={(checked) => update("hasAirConditioning", checked)}
+        />
 
-        <div className="flex items-center justify-between p-3 rounded-xl border border-border">
-          <div>
-            <p className="font-medium text-sm">Electric Heating</p>
-            <p className="text-xs text-muted-foreground">Electric boiler or radiators?</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={data.hasElectricHeating}
-            onClick={() => update("hasElectricHeating", !data.hasElectricHeating)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              data.hasElectricHeating ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                data.hasElectricHeating ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-            <span className="sr-only">
-              {data.hasElectricHeating ? "Electric heating enabled" : "Electric heating disabled"}
-            </span>
-          </button>
-        </div>
+        <ToggleSwitch
+          id="heating-toggle"
+          label="Electric Heating"
+          description="Electric boiler or radiators?"
+          checked={data.hasElectricHeating}
+          onChange={(checked) => update("hasElectricHeating", checked)}
+        />
       </div>
     </div>
   );

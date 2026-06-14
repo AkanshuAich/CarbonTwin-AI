@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthContext } from "./AuthProvider";
-import { signInWithGoogle, signOut } from "@/services/firebase/auth";
+import { signOut } from "@/services/firebase/auth";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import type { User } from "firebase/auth";

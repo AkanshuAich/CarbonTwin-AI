@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function proxy(request: NextRequest) {
+export function proxy() {
   // Guest Mode: We bypassed Firebase Auth, so we don't enforce
   // route protection via cookies anymore. Everyone can access everything.
   

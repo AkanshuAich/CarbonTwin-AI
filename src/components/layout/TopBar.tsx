@@ -3,7 +3,6 @@
 import { useAuth } from "@/features/auth/useAuth";
 import { useTheme } from "next-themes";
 import { Sun, Moon, LogOut, Bell } from "lucide-react";
-import { cn } from "@/utils";
 
 export function TopBar() {
   const { user, signOut } = useAuth();
@@ -44,12 +43,15 @@ export function TopBar() {
         {/* User menu */}
         <div className="flex items-center gap-3 pl-3 border-l border-border/50">
           {user?.photoURL && (
-            <img
-              src={user.photoURL}
-              alt={`${user.displayName ?? "User"}'s profile picture`}
-              className="w-8 h-8 rounded-full ring-2 ring-primary/30"
-              referrerPolicy="no-referrer"
-            />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={user.photoURL}
+                alt={`${user.displayName ?? "User"}'s profile picture`}
+                className="w-8 h-8 rounded-full ring-2 ring-primary/30"
+                referrerPolicy="no-referrer"
+              />
+            </>
           )}
           <div className="hidden md:block text-right">
             <p className="text-sm font-medium leading-none">{user?.displayName}</p>

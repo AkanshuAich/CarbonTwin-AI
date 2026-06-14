@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAIRecommendations } from "@/services/gemini/prioritizer";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/utils/logger";
 import { z } from "zod";
 
 const RequestSchema = z.object({
-  profile: z.record(z.string(), z.unknown()),
-  footprint: z.record(z.string(), z.unknown()),
+  profile: z.any(),
+  footprint: z.any(),
 });
 
 export async function POST(req: NextRequest) {
@@ -18,8 +19,8 @@ export async function POST(req: NextRequest) {
     const parsed = RequestSchema.parse(body);
 
     const recommendations = await generateAIRecommendations(
-      parsed.profile as unknown as Parameters<typeof generateAIRecommendations>[0],
-      parsed.footprint as unknown as Parameters<typeof generateAIRecommendations>[1]
+      parsed.profile,
+      parsed.footprint
     );
 
     return NextResponse.json(
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("Prioritizer error:", err);
+    logger.error({ message: "Prioritizer error", error: String(err) });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

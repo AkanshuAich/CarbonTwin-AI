@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
 import {
   TrendingDown,
   Trash2,
@@ -13,151 +11,39 @@ import {
   Bot,
   Loader2,
 } from "lucide-react";
-import type { ScenarioChange } from "@/types";
-import { buildScenario } from "@/lib/simulation/engine";
-import { calculateCarbonFootprint } from "@/lib/carbon/calculator";
-import { SCENARIO_PRESETS, SCENARIO_TEMPLATES } from "@/lib/simulation/presets";
-import { getCarbonTwinProfile } from "@/services/firebase/firestore";
-import { saveScenario, getUserScenarios } from "@/services/firebase/firestore";
-import { useAuthContext } from "@/features/auth/AuthProvider";
+import { SCENARIO_TEMPLATES } from "@/lib/simulation/presets";
 import { formatCO2, cn } from "@/utils";
-import { logger } from "@/utils/logger";
 import { ImpactComparisonChart } from "@/features/future-impact/ImpactComparisonChart";
 import { EquivalenceDisplay } from "@/features/future-impact/EquivalenceDisplay";
 import { CategoryChangeBreakdown } from "@/features/future-impact/CategoryChangeBreakdown";
-
-const CATEGORIES = [
-  { key: "transport", label: "Transport", emoji: "🚗" },
-  { key: "diet", label: "Diet", emoji: "🥗" },
-  { key: "energy", label: "Energy", emoji: "⚡" },
-  { key: "shopping", label: "Shopping", emoji: "🛍️" },
-] as const;
+import { useFutureImpact } from "@/hooks/useFutureImpact";
+import { CATEGORY_CONFIG } from "@/constants";
 
 export default function FutureImpactPage() {
-  const { user } = useAuthContext();
-  const [selectedChanges, setSelectedChanges] = useState<ScenarioChange[]>([]);
-  const [scenarioName, setScenarioName] = useState("My Future Scenario");
-  const [activeCategory, setActiveCategory] = useState<string>("transport");
-  const [isSaving, setIsSaving] = useState(false);
-  const [savedMessage, setSavedMessage] = useState("");
-  const [aiNarrative, setAiNarrative] = useState<string | null>(null);
-  const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
-
-  // Load Carbon Twin profile
-  const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: ["carbonTwinProfile", user?.uid],
-    queryFn: () => getCarbonTwinProfile(user!.uid),
-    enabled: !!user?.uid,
-  });
-
-  // Load saved scenarios
-  const { data: savedScenarios, refetch: refetchScenarios } = useQuery({
-    queryKey: ["userScenarios", user?.uid],
-    queryFn: () => getUserScenarios(user!.uid),
-    enabled: !!user?.uid,
-  });
-
-  // Compute scenario in real-time as user makes selections
-  const currentScenario = useMemo(() => {
-    if (!profile) return null;
-    const baselineFootprint = calculateCarbonFootprint(profile);
-    if (selectedChanges.length === 0) return null;
-    return buildScenario(scenarioName, selectedChanges, profile, baselineFootprint);
-  }, [profile, selectedChanges, scenarioName]);
-
-  const baselineFootprint = useMemo(() => {
-    if (!profile) return null;
-    return calculateCarbonFootprint(profile);
-  }, [profile]);
-
-  const toggleChange = useCallback((change: ScenarioChange) => {
-    setSelectedChanges((prev) => {
-      const exists = prev.find(
-        (c) => c.type === change.type && c.label === change.label
-      );
-      if (exists) {
-        return prev.filter((c) => c !== exists);
-      }
-      // Remove conflicting changes of same type
-      const filtered = prev.filter((c) => c.type !== change.type);
-      return [...filtered, change];
-    });
-    // Reset narrative when the scenario changes
-    setAiNarrative(null);
-  }, []);
-
-  const isSelected = useCallback(
-    (change: ScenarioChange) =>
-      selectedChanges.some(
-        (c) => c.type === change.type && c.label === change.label
-      ),
-    [selectedChanges]
-  );
-
-  const applyTemplate = useCallback((changes: ScenarioChange[]) => {
-    setSelectedChanges(changes);
-  }, []);
-
-  const handleSave = async () => {
-    if (!currentScenario || !user?.uid) return;
-    setIsSaving(true);
-    try {
-      await saveScenario(user.uid, {
-        name: currentScenario.name,
-        changes: currentScenario.changes,
-        baselineFootprint: currentScenario.baselineFootprint,
-        projectedFootprint: currentScenario.projectedFootprint,
-        savedKgCO2ePerYear: currentScenario.savedKgCO2ePerYear,
-        percentageReduction: currentScenario.percentageReduction,
-        equivalencies: currentScenario.equivalencies,
-      });
-      setSavedMessage("Scenario saved!");
-      refetchScenarios();
-      setTimeout(() => setSavedMessage(""), 3000);
-    } catch (err) {
-      logger.error({ message: "Failed to save scenario", error: String(err) });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleGenerateNarrative = async () => {
-    if (!currentScenario) return;
-    setIsGeneratingNarrative(true);
-    try {
-      const res = await fetch("/api/ai/scenario-narrative", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scenarioName: currentScenario.name,
-          savedKgCO2ePerYear: currentScenario.savedKgCO2ePerYear,
-          percentageReduction: currentScenario.percentageReduction,
-          changeLabels: currentScenario.changes.map((c) => c.label),
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to generate narrative");
-      const data = await res.json();
-      setAiNarrative(data.narrative ?? null);
-    } catch {
-      setAiNarrative("Unable to generate AI insight at this time. Please try again.");
-    } finally {
-      setIsGeneratingNarrative(false);
-    }
-  };
-
-  const filteredPresets = useMemo(() => {
-    if (activeCategory === "all") return SCENARIO_PRESETS;
-    const categoryPrefixMap: Record<string, string[]> = {
-      transport: ["transport", "reduce_flights", "work_from_home"],
-      diet: ["diet"],
-      energy: ["reduce_electricity", "install_renewable"],
-      shopping: ["reduce_shopping", "increase_recycling"],
-    };
-    const prefixes = categoryPrefixMap[activeCategory] ?? [];
-    return SCENARIO_PRESETS.filter((p) =>
-      prefixes.some((prefix) => p.type.startsWith(prefix))
-    );
-  }, [activeCategory]);
+  const {
+    profile,
+    profileLoading,
+    savedScenarios,
+    currentScenario,
+    baselineFootprint,
+    selectedChanges,
+    scenarioName,
+    setScenarioName,
+    activeCategory,
+    setActiveCategory,
+    isSaving,
+    savedMessage,
+    aiNarrative,
+    setAiNarrative,
+    isGeneratingNarrative,
+    toggleChange,
+    isSelected,
+    applyTemplate,
+    handleSave,
+    handleGenerateNarrative,
+    filteredPresets,
+    setSelectedChanges,
+  } = useFutureImpact();
 
   if (profileLoading) {
     return (
@@ -170,7 +56,7 @@ export default function FutureImpactPage() {
     );
   }
 
-  if (!profile) {
+  if (!profile || !baselineFootprint) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center glass rounded-2xl p-8 max-w-md">
@@ -199,7 +85,8 @@ export default function FutureImpactPage() {
             <h1 className="text-3xl font-bold">Future Impact Explorer</h1>
           </div>
           <p className="text-muted-foreground">
-            Simulate lifestyle changes and see their environmental impact in real time
+            Simulate lifestyle changes and see their environmental impact in real
+            time
           </p>
         </div>
 
@@ -235,7 +122,10 @@ export default function FutureImpactPage() {
         <div className="xl:col-span-2 space-y-6">
           {/* Scenario Name */}
           <div className="glass rounded-2xl p-5">
-            <label htmlFor="scenario-name" className="block text-sm font-medium mb-2 text-muted-foreground">
+            <label
+              htmlFor="scenario-name"
+              className="block text-sm font-medium mb-2 text-muted-foreground"
+            >
               Scenario Name
             </label>
             <input
@@ -248,7 +138,10 @@ export default function FutureImpactPage() {
               maxLength={50}
               aria-describedby="scenario-name-hint"
             />
-            <p id="scenario-name-hint" className="text-xs text-muted-foreground mt-1">
+            <p
+              id="scenario-name-hint"
+              className="text-xs text-muted-foreground mt-1"
+            >
               Give your scenario a descriptive name
             </p>
           </div>
@@ -283,8 +176,12 @@ export default function FutureImpactPage() {
             <h2 className="font-semibold mb-4">Choose Changes</h2>
 
             {/* Category selector */}
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-1" role="tablist" aria-label="Change categories">
-              {[{ key: "all", label: "All", emoji: "🌍" }, ...CATEGORIES].map(
+            <div
+              className="flex gap-2 mb-4 overflow-x-auto pb-1"
+              role="tablist"
+              aria-label="Change categories"
+            >
+              {[{ key: "all", label: "All", emoji: "🌍" }, ...CATEGORY_CONFIG].map(
                 (cat) => (
                   <button
                     key={cat.key}
@@ -339,7 +236,9 @@ export default function FutureImpactPage() {
                       </div>
                       {selected && (
                         <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-                          <span className="text-white text-xs font-bold">✓</span>
+                          <span className="text-white text-xs font-bold">
+                            ✓
+                          </span>
                         </div>
                       )}
                     </div>
@@ -407,11 +306,17 @@ export default function FutureImpactPage() {
                 aria-live="polite"
               >
                 <div className="w-20 h-20 rounded-full gradient-brand-subtle flex items-center justify-center mb-4">
-                  <TrendingDown className="w-10 h-10 text-primary" aria-hidden="true" />
+                  <TrendingDown
+                    className="w-10 h-10 text-primary"
+                    aria-hidden="true"
+                  />
                 </div>
-                <h2 className="text-xl font-semibold mb-2">Select Lifestyle Changes</h2>
+                <h2 className="text-xl font-semibold mb-2">
+                  Select Lifestyle Changes
+                </h2>
                 <p className="text-muted-foreground max-w-sm">
-                  Choose changes from the left panel to instantly see their impact on your carbon footprint
+                  Choose changes from the left panel to instantly see their
+                  impact on your carbon footprint
                 </p>
               </motion.div>
             ) : (
@@ -427,7 +332,9 @@ export default function FutureImpactPage() {
                 {/* Key metrics */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="glass rounded-2xl p-5 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Current</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Current
+                    </p>
                     <p className="text-2xl font-bold text-foreground">
                       {formatCO2(baselineFootprint!.total)}
                     </p>
@@ -441,7 +348,9 @@ export default function FutureImpactPage() {
                     <p className="text-xs text-muted-foreground">per year</p>
                   </div>
                   <div className="glass rounded-2xl p-5 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">You&apos;d save</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      You&apos;d save
+                    </p>
                     <p className="text-2xl font-bold text-emerald-400">
                       {formatCO2(currentScenario.savedKgCO2ePerYear)}
                     </p>
@@ -453,7 +362,9 @@ export default function FutureImpactPage() {
 
                 {/* Comparison Chart */}
                 <div className="glass rounded-2xl p-6">
-                  <h2 className="font-semibold mb-4">Carbon Footprint Comparison</h2>
+                  <h2 className="font-semibold mb-4">
+                    Carbon Footprint Comparison
+                  </h2>
                   <ImpactComparisonChart
                     baseline={baselineFootprint!}
                     projected={currentScenario.projectedFootprint}
@@ -481,7 +392,10 @@ export default function FutureImpactPage() {
                 <div className="glass rounded-2xl p-6 border border-primary/20">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="font-semibold flex items-center gap-2">
-                      <Bot className="w-4 h-4 text-primary" aria-hidden="true" />
+                      <Bot
+                        className="w-4 h-4 text-primary"
+                        aria-hidden="true"
+                      />
                       AI Insight
                     </h2>
                     {!aiNarrative && (
@@ -497,11 +411,16 @@ export default function FutureImpactPage() {
                         aria-label="Generate Gemini AI insight for this scenario"
                       >
                         {isGeneratingNarrative ? (
-                          <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                          <Loader2
+                            className="w-3 h-3 animate-spin"
+                            aria-hidden="true"
+                          />
                         ) : (
                           <Sparkles className="w-3 h-3" aria-hidden="true" />
                         )}
-                        {isGeneratingNarrative ? "Generating..." : "Generate AI Insight"}
+                        {isGeneratingNarrative
+                          ? "Generating..."
+                          : "Generate AI Insight"}
                       </button>
                     )}
                     {aiNarrative && (
@@ -522,7 +441,9 @@ export default function FutureImpactPage() {
                         animate={{ opacity: 1 }}
                         className="text-sm text-muted-foreground italic"
                       >
-                        Click &ldquo;Generate AI Insight&rdquo; to get a Gemini-powered narrative about the real-world impact of this scenario.
+                        Click &ldquo;Generate AI Insight&rdquo; to get a
+                        Gemini-powered narrative about the real-world impact of
+                        this scenario.
                       </motion.p>
                     ) : isGeneratingNarrative ? (
                       <motion.div
@@ -531,7 +452,10 @@ export default function FutureImpactPage() {
                         animate={{ opacity: 1 }}
                         className="flex items-center gap-2 text-sm text-muted-foreground"
                       >
-                        <Loader2 className="w-4 h-4 animate-spin text-primary" aria-hidden="true" />
+                        <Loader2
+                          className="w-4 h-4 animate-spin text-primary"
+                          aria-hidden="true"
+                        />
                         Gemini is crafting your personalized insight...
                       </motion.div>
                     ) : (
@@ -555,7 +479,10 @@ export default function FutureImpactPage() {
 
       {/* Saved Scenarios */}
       {savedScenarios && savedScenarios.length > 0 && (
-        <section aria-labelledby="saved-scenarios-heading" className="space-y-4">
+        <section
+          aria-labelledby="saved-scenarios-heading"
+          className="space-y-4"
+        >
           <h2 id="saved-scenarios-heading" className="text-xl font-bold">
             Saved Scenarios
           </h2>

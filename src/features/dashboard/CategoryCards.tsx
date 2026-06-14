@@ -9,32 +9,7 @@ interface CategoryCardsProps {
   total: number;
 }
 
-const CATEGORY_CONFIG = [
-  {
-    key: "transport" as const,
-    label: "Transport",
-    emoji: "🚗",
-    tip: "Your biggest lever is usually switching to public transit or working from home",
-  },
-  {
-    key: "diet" as const,
-    label: "Diet & Food",
-    emoji: "🥗",
-    tip: "Going vegetarian can reduce food emissions by up to 50%",
-  },
-  {
-    key: "energy" as const,
-    label: "Home Energy",
-    emoji: "⚡",
-    tip: "Switching to renewable energy can slash this category dramatically",
-  },
-  {
-    key: "shopping" as const,
-    label: "Shopping",
-    emoji: "🛍️",
-    tip: "Buying less and recycling more are the easiest wins here",
-  },
-];
+import { CATEGORY_CONFIG } from "@/constants";
 
 export function CategoryCards({ categories, total }: CategoryCardsProps) {
   return (

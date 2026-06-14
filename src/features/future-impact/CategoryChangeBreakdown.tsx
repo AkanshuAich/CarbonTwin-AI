@@ -9,12 +9,7 @@ interface CategoryChangeBreakdownProps {
   projected: CarbonFootprint;
 }
 
-const CATEGORIES = [
-  { key: "transport" as const, label: "Transport", emoji: "🚗" },
-  { key: "diet" as const, label: "Diet", emoji: "🥗" },
-  { key: "energy" as const, label: "Energy", emoji: "⚡" },
-  { key: "shopping" as const, label: "Shopping", emoji: "🛍️" },
-];
+import { CATEGORY_CONFIG } from "@/constants";
 
 export function CategoryChangeBreakdown({
   baseline,
@@ -22,7 +17,7 @@ export function CategoryChangeBreakdown({
 }: CategoryChangeBreakdownProps) {
   return (
     <div className="space-y-4" role="list" aria-label="Category-by-category impact breakdown">
-      {CATEGORIES.map(({ key, label, emoji }, i) => {
+      {CATEGORY_CONFIG.map(({ key, label, emoji }, i) => {
         const current = baseline.categories[key];
         const future = projected.categories[key];
         const saved = current - future;

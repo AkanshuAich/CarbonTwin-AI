@@ -1,5 +1,22 @@
-import { getProModel, getFlashModel } from "./client";
+import { getProModel } from "./client";
 import type { CarbonTwinProfile, CarbonFootprint, WeeklyReport } from "@/types";
+import type { CategoryFootprint } from "@/types";
+
+/**
+ * Returns the category key with the highest emission value.
+ * Extracted to avoid duplicating the sort expression in two places
+ * within the same function.
+ */
+function getBiggestEmissionSource(
+  categories: CategoryFootprint
+): keyof CategoryFootprint {
+  const entries = Object.entries(categories) as Array<
+    [keyof CategoryFootprint, number]
+  >;
+  return (
+    entries.sort(([, a], [, b]) => b - a)[0]?.[0] ?? "transport"
+  );
+}
 
 /**
  * Generate a personalized weekly sustainability report
@@ -10,6 +27,7 @@ export async function generateWeeklyReport(
   footprint: CarbonFootprint
 ): Promise<Omit<WeeklyReport, "id">> {
   const model = getProModel();
+  const biggestSource = getBiggestEmissionSource(footprint.categories);
 
   const prompt = `You are CarbonTwin AI's sustainability expert. Generate a personalized, insightful weekly sustainability report for this user.
 
@@ -23,9 +41,7 @@ FOOTPRINT:
 - Total: ${footprint.total} kgCO2e/year (${footprint.monthly} kgCO2e/month)
 - Breakdown: Transport ${footprint.categories.transport}, Diet ${footprint.categories.diet}, Energy ${footprint.categories.energy}, Shopping ${footprint.categories.shopping} kgCO2e/year
 
-The biggest emission source is: ${Object.entries(footprint.categories)
-    .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0] ?? "unknown"
-  }
+The biggest emission source is: ${biggestSource}
 
 Write a warm, motivating report that:
 1. Celebrates any wins the user has already made
@@ -46,10 +62,12 @@ Return ONLY valid JSON, no markdown.`;
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
   const json = text.replace(/^```json\n?/, "").replace(/\n?```$/, "");
-  const data = JSON.parse(json);
-
-  const biggestSource = (Object.entries(footprint.categories)
-    .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0] ?? "transport") as keyof typeof footprint.categories;
+  const data = JSON.parse(json) as {
+    summary: string;
+    improvements: string[];
+    recommendedActions: string[];
+    encouragementMessage: string;
+  };
 
   return {
     userId,
@@ -62,27 +80,4 @@ Return ONLY valid JSON, no markdown.`;
     comparedToPreviousWeek: 0, // Would need historical data for real comparison
     generatedAt: new Date(),
   };
-}
-
-/**
- * Generate an AI narrative for a future impact scenario
- */
-export async function generateScenarioNarrative(
-  scenarioName: string,
-  savedKgCO2ePerYear: number,
-  percentageReduction: number,
-  changes: Array<{ label: string; description: string }>
-): Promise<string> {
-  const model = getFlashModel();
-
-  const prompt = `You are CarbonTwin AI. Write a 2-sentence inspiring narrative for this future lifestyle scenario.
-
-Scenario: "${scenarioName}"
-Changes: ${changes.map((c) => c.label).join(", ")}
-CO2 saved: ${savedKgCO2ePerYear} kgCO2e/year (${percentageReduction}% reduction)
-
-Write a motivating, specific message about the real-world impact of these changes. Mention the CO2 savings. Be concise and inspiring. No JSON, just plain text.`;
-
-  const result = await model.generateContent(prompt);
-  return result.response.text().trim();
 }

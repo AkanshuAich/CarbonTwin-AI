@@ -6,7 +6,6 @@ import type {
   ScenarioChangeType,
 } from "@/types";
 import { calculateCarbonFootprint, calculateEquivalencies } from "@/lib/carbon/calculator";
-import { TRANSPORT_EMISSION_FACTORS } from "@/lib/carbon/constants";
 import { nanoid } from "@/utils/nanoid";
 
 /**

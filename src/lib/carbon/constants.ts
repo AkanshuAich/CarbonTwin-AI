@@ -78,3 +78,10 @@ export const SCORE_THRESHOLDS = {
   high: 8000,
   // above 8000 = very_high
 };
+
+/**
+ * Upper bound for the carbon score scale (kgCO2e / year).
+ * Represents an extremely high-emitting lifestyle — beyond this the score is 0.
+ * Sourced from IPCC high-income country 99th-percentile estimates.
+ */
+export const MAX_BAD_KG_CO2E = 30_000;
